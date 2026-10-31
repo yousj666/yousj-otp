@@ -1,1 +1,1 @@
-{"action":{"default_popup":"popup.html","default_title":"Yousj OTP"},"description":"一次性验证码（2FA/TOTP）管理：扫码图片自动解析，点一下复制","icons":{"128":"icon128.png"},"manifest_version":3,"name":"Yousj OTP","permissions":["storage","clipboardWrite"],"version":"1.0"}
+{"action":{"default_popup":"popup.html","default_title":"Yousj OTP"},"description":"一次性验证码（2FA/TOTP）管理：扫码图片自动解析，点一下复制","icons":{"128":"icon128.png"},"manifest_version":3,"name":"Yousj OTP","permissions":["storage","clipboardWrite"],"version":"1.0.1"}

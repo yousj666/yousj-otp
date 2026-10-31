@@ -43,17 +43,22 @@ function parseOtpAuth(url) {
   const secret = q.get("secret");
   if (!secret) return null;
   const issuer = q.get("issuer") || "";
-  const period = parseInt(q.get("period") || "15", 10);
+  const period = parseInt(q.get("period") || "30", 10);
   // label 可能是 "issuer:account" 格式
   const name = label.includes(":") ? label.split(":").slice(1).join(":") : label;
   return { name: issuer ? `${issuer} (${name})` : name, secret,
-           period: Number.isInteger(period) && period >= 10 && period <= 3600 ? period : 15 };
+           period: Number.isInteger(period) && period >= 10 && period <= 3600 ? period : 30 };
 }
 
 /* ---------- 存储 ---------- */
 async function loadAccounts() {
   const r = await chrome.storage.local.get("accounts");
-  return r.accounts || [];
+  const a = r.accounts || [];
+  // 迁移：旧版默认时长误写为 15 秒，存量 15 一律修正为标准 30 秒
+  let migrated = false;
+  for (const acc of a) if (acc.period === 15) { acc.period = 30; migrated = true; }
+  if (migrated) await saveAccounts(a);
+  return a;
 }
 async function saveAccounts(a) {
   await chrome.storage.local.set({ accounts: a });
@@ -100,11 +105,11 @@ async function render() {
   const sec = 0; // 占位，每卡独立计算
   let html = "";
   for (let i = 0; i < accounts.length; i++) {
-    const period = accounts[i].period || 15;
+    const period = accounts[i].period || 30;
     const sLeft = secondsLeft(period);
     const code = await totp(accounts[i].secret, period).catch(() => "------");
     html += `<div class="card" data-i="${i}">
-      <div><div class="name">${esc(accounts[i].name)}${period !== 15 ? ` · ${period}s` : ""}</div>
+      <div><div class="name">${esc(accounts[i].name)}${period !== 30 ? ` · ${period}s` : ""}</div>
       <div class="code">${code.slice(0,3)} ${code.slice(3)}</div></div>
       <div style="display:flex;align-items:center">${ringSVG(sLeft, period)}
       <span class="edit" data-edit="${i}" title="编辑">✎</span>
@@ -140,7 +145,7 @@ listEl.addEventListener("click", async (e) => {
     const a = accounts[i];
     document.getElementById("inpName").value = a.name;
     document.getElementById("inpSecret").value = a.secret;
-    document.getElementById("inpPeriod").value = a.period || 15;
+    document.getElementById("inpPeriod").value = a.period || 30;
     editingIndex = i;
     document.getElementById("btnManual").textContent = "保存修改";
     addPanel.classList.add("show");
@@ -172,7 +177,7 @@ document.getElementById("btnManual").onclick = async () => {
   const name = document.getElementById("inpName").value.trim();
   const secret = document.getElementById("inpSecret").value.trim().replace(/\s/g, "");
   const periodRaw = document.getElementById("inpPeriod").value.trim();
-  const period = periodRaw ? parseInt(periodRaw, 10) : 15;
+  const period = periodRaw ? parseInt(periodRaw, 10) : 30;
   if (!name || !secret) { toast("名字和密钥都要填"); return; }
   if (!Number.isInteger(period) || period < 10 || period > 3600) {
     toast("时长填 10~3600 的整数秒"); return;
@@ -218,7 +223,7 @@ document.getElementById("qrInput").addEventListener("change", (e) => {
     if (!p) { toast("不是有效的 OTP 二维码"); return; }
     document.getElementById("inpName").value = p.name;
     document.getElementById("inpSecret").value = p.secret;
-    document.getElementById("inpPeriod").value = p.period || 15;
+    document.getElementById("inpPeriod").value = p.period || 30;
     toast("已填入，检查后点「手动添加」保存");
     URL.revokeObjectURL(img.src);
   };

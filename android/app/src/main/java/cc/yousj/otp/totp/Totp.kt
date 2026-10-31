@@ -60,7 +60,7 @@ object Totp {
         }
         val secret = params["secret"]?.takeIf { it.isNotBlank() } ?: return null
         val issuer = params["issuer"].orEmpty()
-        val period = params["period"]?.toIntOrNull()?.takeIf { it in 10..3600 } ?: 15
+        val period = params["period"]?.toIntOrNull()?.takeIf { it in 10..3600 } ?: PERIOD
         val name = if (":" in label) label.substringAfter(":") else label
         val display = if (issuer.isNotBlank()) "$issuer ($name)" else name
         return Triple(display, secret, period)

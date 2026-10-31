@@ -35,7 +35,7 @@ $BT/aapt2 compile --dir $PROJ/app/src/main/res -o $B/res.zip
 echo "[4/6] aapt2 link..."
 $BT/aapt2 link -o $B/base.apk -I $AJAR \
   --manifest $PROJ/app/src/main/AndroidManifest.xml \
-  --version-code 1 --version-name 1.0 \
+  --version-code 2 --version-name 1.0.1 \
   --java $B/gen $B/res.zip
 
 echo "[5/6] add dex to apk..."

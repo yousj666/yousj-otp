@@ -74,11 +74,16 @@ class MainActivity : Activity() {
     private fun loadAccounts(): MutableList<Account> {
         val s = getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("list", "[]")!!
         val arr = JSONArray(s)
-        return MutableList(arr.length()) { i ->
+        var migrated = false
+        val list = MutableList(arr.length()) { i ->
             val o = arr.getJSONObject(i)
-            Account(o.getString("name"), o.getString("secret"),
-                o.optInt("period", Totp.PERIOD).takeIf { it in 10..3600 } ?: Totp.PERIOD)
+            var p = o.optInt("period", Totp.PERIOD).takeIf { it in 10..3600 } ?: Totp.PERIOD
+            // 迁移：旧版默认时长误写为 15 秒，存量 15 一律修正为标准 30 秒
+            if (p == 15) { p = Totp.PERIOD; migrated = true }
+            Account(o.getString("name"), o.getString("secret"), p)
         }
+        if (migrated) saveAccounts(list)
+        return list
     }
     private fun saveAccounts(a: List<Account>) {
         val arr = JSONArray()
@@ -122,7 +127,7 @@ class MainActivity : Activity() {
             }
             val left = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             left.addView(TextView(this).apply {
-                text = if (acc.period != 15) "${acc.name} · ${acc.period}s" else acc.name
+                text = if (acc.period != Totp.PERIOD) "${acc.name} · ${acc.period}s" else acc.name
                 setTextColor(Color.parseColor("#aaaaaa")); textSize = 13f
             })
             left.addView(TextView(this).apply {
@@ -173,9 +178,9 @@ class MainActivity : Activity() {
             setText(existing?.secret ?: "")
         }
         val periodIn = EditText(this).apply {
-            hint = "时长（秒，默认 15，可改）"
+            hint = "时长（秒，默认 30，可改）"
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            setText((existing?.period ?: 15).toString())
+            setText((existing?.period ?: Totp.PERIOD).toString())
         }
         val btnManual = Button(this).apply { text = if (existing != null) "保存修改" else "手动添加" }
         val btnQR = Button(this).apply { text = "上传二维码图片" }
@@ -191,7 +196,7 @@ class MainActivity : Activity() {
             val secret = secretIn.text.toString().trim().replace("\\s".toRegex(), "")
             val periodRaw = periodIn.text.toString().trim()
             // 宽松解析：提取开头的数字（如 "30秒" 也能认出 30）
-            val period = Regex("^\\d+").find(periodRaw)?.value?.toIntOrNull() ?: 15
+            val period = Regex("^\\d+").find(periodRaw)?.value?.toIntOrNull() ?: Totp.PERIOD
             if (name.isEmpty() || secret.isEmpty()) {
                 Toast.makeText(this, "名字和密钥都要填", Toast.LENGTH_SHORT).show(); return@setOnClickListener
             }
