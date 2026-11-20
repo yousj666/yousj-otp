@@ -109,6 +109,53 @@ $('#btn-lock').addEventListener('click', async () => {
 });
 
 $('#btn-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
+$('#addBtn').addEventListener('click', () => chrome.runtime.openOptionsPage());
+
+/* ---------- 二维码扫码添加（图片文件 / 粘贴图片） ---------- */
+
+function newId() {
+  return crypto.randomUUID ? crypto.randomUUID()
+    : 'id' + Date.now() + Math.floor(Math.random() * 1e9);
+}
+
+async function addAccountFromQrText(text) {
+  const parsed = OtpCore.parseOtpauth(String(text || '').trim());
+  if (!parsed) { toast('二维码不是有效的 OTP 账号'); return; }
+  state.data.accounts.push({
+    id: newId(),
+    name: parsed.account || parsed.name || '',
+    issuer: parsed.issuer || '',
+    secret: parsed.secret,
+    type: parsed.type || 'totp',
+    algorithm: parsed.algorithm || 'SHA1',
+    digits: parsed.digits || 6,
+    period: parsed.period || 30,
+    counter: parsed.counter || 0
+  });
+  await persist();
+  renderCodes();
+  toast('已添加 ' + (parsed.issuer ? parsed.issuer + ' ' : '') + (parsed.account || ''));
+}
+
+async function scanImageFile(file) {
+  if (!file) return;
+  const text = await QrTools.decodeFile(file);
+  if (!text) { toast('没识别出二维码'); return; }
+  await addAccountFromQrText(text);
+}
+
+$('#btn-qr-scan').addEventListener('click', () => $('#qr-file-input').click());
+$('#qr-file-input').addEventListener('change', (e) => {
+  scanImageFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.addEventListener('paste', (e) => {
+  if (!state.data) return;
+  const item = Array.from(e.clipboardData?.items || []).find((i) => i.type.startsWith('image/'));
+  if (!item) return;
+  e.preventDefault();
+  scanImageFile(item.getAsFile());
+});
 
 /* ---------- 标签页 ---------- */
 
@@ -150,20 +197,22 @@ function renderCodes() {
       if (!isHotp) remaining = OtpCore.remainingSeconds(acct.period || 30, now);
     } catch (e) { /* 密钥损坏时显示占位 */ }
     const urgent = remaining !== null && remaining <= 5;
+    const label = acct.issuer ? `${acct.issuer} (${acct.name})` : acct.name;
     return `
     <button class="code-item" data-id="${acct.id}">
       <span class="meta">
-        <span class="issuer">${esc(acct.issuer || '—')}</span>
-        <span class="name">${esc(acct.name)}</span>
+        <span class="name">${esc(label)}${!isHotp && (acct.period || 30) !== 30 ? ` · ${acct.period || 30}s` : ''}</span>
+        <span class="code ${urgent ? 'urgent' : ''}" data-role="code">${esc(groupCode(code, acct.digits))}</span>
       </span>
-      <span class="code ${urgent ? 'urgent' : ''}" data-role="code">${esc(groupCode(code, acct.digits))}</span>
       ${isHotp
         ? '<span class="hotp-tag">计数器</span>'
-        : `<span class="ring-wrap"><svg width="34" height="34">
+        : `<span class="ring-wrap"><svg width="34" height="34" viewBox="0 0 34 34">
              <circle class="ring-bg" cx="17" cy="17" r="13.5" fill="none" stroke-width="3"></circle>
              <circle class="ring-fg ${urgent ? 'urgent' : ''}" data-role="ring" cx="17" cy="17" r="13.5" fill="none"
                stroke-width="3" stroke-linecap="round" stroke-dasharray="${RING_C}"
-               stroke-dashoffset="${remaining !== null ? RING_C * (1 - remaining / (acct.period || 30)) : 0}"></circle>
+               stroke-dashoffset="${remaining !== null ? RING_C * (1 - remaining / (acct.period || 30)) : 0}"
+               transform="rotate(-90 17 17)"></circle>
+             <text data-role="ring-text" x="17" y="21" text-anchor="middle" font-size="10" fill="#aaa">${remaining !== null ? remaining : ''}</text>
            </svg></span>`}
     </button>`;
   }).join('');
@@ -183,8 +232,10 @@ function refreshCodesInPlace() {
     const remaining = OtpCore.remainingSeconds(acct.period || 30, now);
     const codeEl = el.querySelector('[data-role="code"]');
     const ringEl = el.querySelector('[data-role="ring"]');
+    const ringText = el.querySelector('[data-role="ring-text"]');
     codeEl.textContent = groupCode(code, acct.digits);
     codeEl.classList.toggle('urgent', remaining <= 5);
+    if (ringText) ringText.textContent = String(remaining);
     if (ringEl) {
       ringEl.style.strokeDashoffset = String(RING_C * (1 - remaining / (acct.period || 30)));
       ringEl.classList.toggle('urgent', remaining <= 5);

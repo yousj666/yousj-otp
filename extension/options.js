@@ -120,14 +120,53 @@ function renderAccounts() {
         <div class="t1">${esc(a.issuer ? a.issuer + ' · ' : '')}${esc(a.name)}</div>
         <div class="t2">${a.type === 'hotp' ? 'HOTP 计数器 ' + (a.counter || 0) : 'TOTP ' + (a.period || 30) + 's'} · ${esc(a.algorithm || 'SHA1')} · ${a.digits || 6} 位</div>
       </div>
+      <button class="mini-btn" data-qr="${a.id}">二维码</button>
       <button class="mini-btn" data-edit="${a.id}">编辑</button>
       <button class="mini-btn danger" data-del="${a.id}">删除</button>
     </div>`).join('');
+  box.querySelectorAll('[data-qr]').forEach((b) =>
+    b.addEventListener('click', () => showQr(b.dataset.qr)));
   box.querySelectorAll('[data-edit]').forEach((b) =>
     b.addEventListener('click', () => fillAccountForm(b.dataset.edit)));
   box.querySelectorAll('[data-del]').forEach((b) =>
     b.addEventListener('click', () => deleteAccount(b.dataset.del)));
 }
+
+/* ---------- 二维码：出示 / 扫码添加 ---------- */
+
+function showQr(id) {
+  const a = state.data.accounts.find((x) => x.id === id);
+  if (!a) return;
+  const url = OtpCore.buildOtpauth(a);
+  $('#qr-panel-title').textContent = '账号二维码 · ' + (a.issuer ? a.issuer + ' · ' : '') + a.name;
+  $('#qr-panel-url').textContent = url;
+  QrTools.drawToCanvas($('#qr-canvas'), url);
+  $('#qr-panel').classList.remove('hidden');
+  $('#qr-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+$('#btn-qr-close').addEventListener('click', () => $('#qr-panel').classList.add('hidden'));
+
+async function scanImageFile(file) {
+  if (!file) return;
+  const text = await QrTools.decodeFile(file);
+  if (!text) { toast('没识别出二维码'); return; }
+  const parsed = OtpCore.parseOtpauth(String(text).trim());
+  if (!parsed) { toast('二维码不是有效的 OTP 账号'); return; }
+  applyParsed(parsed);
+  toast('扫码成功，已填入，检查后点保存');
+}
+$('#btn-qr-file').addEventListener('click', () => $('#qr-file-input').click());
+$('#qr-file-input').addEventListener('change', (e) => {
+  scanImageFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.addEventListener('paste', (e) => {
+  if (!state.data) return;
+  const item = Array.from(e.clipboardData?.items || []).find((i) => i.type.startsWith('image/'));
+  if (!item) return;
+  e.preventDefault();
+  scanImageFile(item.getAsFile());
+});
 
 function setTypeVisibility() {
   const isHotp = $('#f-type').value === 'hotp';
@@ -168,6 +207,20 @@ function resetAccountForm() {
 }
 $('#btn-account-reset').addEventListener('click', resetAccountForm);
 
+/* 把解析出的 otpauth 字段填进账号表单（链接粘贴 / 扫码共用） */
+function applyParsed(parsed) {
+  $('#account-error').textContent = '';
+  $('#f-name').value = parsed.account || '';
+  $('#f-issuer').value = parsed.issuer || '';
+  $('#f-secret').value = parsed.secret;
+  $('#f-type').value = parsed.type;
+  $('#f-algorithm').value = parsed.algorithm;
+  $('#f-digits').value = String(parsed.digits);
+  $('#f-period').value = parsed.period;
+  if (parsed.counter !== undefined) $('#f-counter').value = parsed.counter;
+  setTypeVisibility();
+}
+
 let parseTimer = null;
 $('#f-otpauth').addEventListener('input', (e) => {
   clearTimeout(parseTimer);
@@ -176,16 +229,7 @@ $('#f-otpauth').addEventListener('input', (e) => {
   parseTimer = setTimeout(() => {
     const parsed = OtpCore.parseOtpauth(v);
     if (!parsed) { $('#account-error').textContent = '链接解析失败，请检查'; return; }
-    $('#account-error').textContent = '';
-    $('#f-name').value = parsed.account || '';
-    $('#f-issuer').value = parsed.issuer || '';
-    $('#f-secret').value = parsed.secret;
-    $('#f-type').value = parsed.type;
-    $('#f-algorithm').value = parsed.algorithm;
-    $('#f-digits').value = String(parsed.digits);
-    $('#f-period').value = parsed.period;
-    if (parsed.counter !== undefined) $('#f-counter').value = parsed.counter;
-    setTypeVisibility();
+    applyParsed(parsed);
     toast('已从链接解析填表');
   }, 250);
 });

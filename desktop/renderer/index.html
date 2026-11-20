@@ -11,10 +11,7 @@
 <!-- 锁定 / 首次设置 -->
 <div id="lock-screen">
   <div class="lock-card">
-    <div class="brand-mark">
-      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
-    </div>
-    <h1>Yousj OTP</h1>
+    <h1><span class="brand-accent">Yousj</span> OTP</h1>
     <p class="lock-sub" id="lock-sub">输入主密码解锁你的验证码与日记</p>
     <form id="lock-form">
       <input type="password" id="lock-password" placeholder="主密码" autocomplete="current-password">
@@ -29,10 +26,7 @@
 <!-- 主界面 -->
 <div id="app" class="hidden">
   <aside class="sidebar">
-    <div class="side-brand">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
-      <span>Yousj OTP</span>
-    </div>
+    <div class="side-brand"><span class="brand-accent">Yousj</span>&nbsp;OTP</div>
     <nav class="side-nav">
       <button class="nav-item active" data-page="codes">
         <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>
@@ -63,7 +57,7 @@
       <header class="page-head">
         <div>
           <h2>验证码</h2>
-          <p class="page-desc">点任意卡片复制验证码</p>
+          <p class="page-desc">点任意卡片复制验证码，悬停卡片可出示二维码</p>
         </div>
         <div class="head-actions">
           <div class="search-box">
@@ -76,7 +70,7 @@
       <div id="codes-grid" class="codes-grid"></div>
       <div id="codes-empty" class="empty-state hidden">
         <p class="empty-title">还没有账号</p>
-        <p class="empty-desc">点「添加账号」，手动填密钥或粘贴 otpauth:// 链接</p>
+        <p class="empty-desc">点「添加账号」，手动填密钥、粘贴 otpauth:// 链接，或扫码添加</p>
       </div>
     </section>
 
@@ -183,7 +177,7 @@
         </div>
         <div class="card about-card">
           <h3>关于</h3>
-          <p class="card-desc">Yousj OTP v2.0.0 · 数据只存本机 userData 目录，全程 AES-256-GCM 加密，密钥由主密码经 PBKDF2（210000 次）派生。不联网、不上传。</p>
+          <p class="card-desc">Yousj OTP v2.1.0 · 数据只存本机 userData 目录，全程 AES-256-GCM 加密，密钥由主密码经 PBKDF2（210000 次）派生。不联网、不上传。</p>
         </div>
       </div>
     </section>
@@ -197,6 +191,13 @@
     <label class="field">粘贴 otpauth:// 链接（自动解析填表）
       <input type="text" id="f-otpauth" placeholder="otpauth://totp/…">
     </label>
+    <div class="qr-actions">
+      <button type="button" class="btn" id="btn-qr-file">导入二维码图片</button>
+      <button type="button" class="btn" id="btn-qr-camera">摄像头扫码</button>
+      <span class="qr-hint">也可以把二维码图片直接粘贴到这个弹窗里</span>
+      <input type="file" id="qr-file-input" accept="image/*" class="hidden">
+    </div>
+    <video id="qr-video" class="qr-video hidden" autoplay playsinline muted></video>
     <div class="form-grid">
       <label class="field">名称（账号）<input type="text" id="f-name" placeholder="alice@example.com"></label>
       <label class="field">发行方<input type="text" id="f-issuer" placeholder="GitHub"></label>
@@ -231,8 +232,24 @@
   </div>
 </div>
 
+<!-- 出示二维码弹窗 -->
+<div id="qr-modal" class="modal-overlay hidden">
+  <div class="modal-card qr-modal-card">
+    <h3 class="qr-title" id="qr-modal-title">账号二维码</h3>
+    <div class="qr-box"><canvas id="qr-canvas" width="288" height="288"></canvas></div>
+    <p class="qr-url" id="qr-modal-url"></p>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btn-qr-close">关闭</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast hidden"></div>
 
+<script src="../core.js"></script>
+<script src="jsqr.min.js"></script>
+<script src="qrcode.js"></script>
+<script src="qr-tools.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

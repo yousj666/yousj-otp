@@ -4,7 +4,7 @@
  * 渲染层经 preload 的固定 IPC 接口取验证码、读写数据，拿不到密钥本身。
  */
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -244,7 +244,7 @@ function createWindow() {
     height: 740,
     minWidth: 920,
     minHeight: 600,
-    backgroundColor: '#0d141b',
+    backgroundColor: '#1a1a1a',
     title: 'Yousj OTP',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -266,6 +266,11 @@ if (!gotLock) {
     if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
   });
   app.whenReady().then(() => {
+    // 只放行摄像头（扫码添加用），其余权限一律拒绝
+    session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
+      callback(permission === 'media');
+    });
+    session.defaultSession.setPermissionCheckHandler((wc, permission) => permission === 'media');
     store = new VaultStore(vaultPath());
     registerIpc();
     createWindow();

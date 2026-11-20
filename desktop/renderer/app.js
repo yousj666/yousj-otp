@@ -170,6 +170,7 @@ function buildCodeCards() {
     const isHotp = acct.type === 'hotp';
     card.innerHTML = `
       <div class="card-tools">
+        <button class="tool-btn" data-act="qr" title="出示二维码"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="7" height="7" rx="1"/><rect x="13.5" y="3.5" width="7" height="7" rx="1"/><rect x="3.5" y="13.5" width="7" height="7" rx="1"/><path d="M13.5 13.5h3v3h-3zM17.5 17.5h3v3h-3z"/></svg></button>
         <button class="tool-btn" data-act="edit" title="编辑">✎</button>
         <button class="tool-btn danger" data-act="del" title="删除">✕</button>
       </div>
@@ -192,6 +193,7 @@ function buildCodeCards() {
     `;
     card.addEventListener('click', (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act;
+      if (act === 'qr') { e.stopPropagation(); openQrModal(acct); return; }
       if (act === 'edit') { e.stopPropagation(); openAccountModal(acct); return; }
       if (act === 'del') { e.stopPropagation(); deleteAccount(acct); return; }
       if (act === 'hotp') { e.stopPropagation(); useHotp(acct, card); return; }
@@ -304,12 +306,26 @@ async function openAccountModal(acct) {
   $('#f-name').focus();
 }
 
-function closeAccountModal() { $('#account-modal').classList.add('hidden'); }
+function closeAccountModal() { stopCamera(); $('#account-modal').classList.add('hidden'); }
 $('#btn-add-account').addEventListener('click', () => openAccountModal(null));
 $('#btn-account-cancel').addEventListener('click', closeAccountModal);
 $('#account-modal').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeAccountModal();
 });
+
+/* 把解析出的 otpauth 字段填进账号表单（链接粘贴 / 扫码共用） */
+function fillAccountForm(parsed) {
+  $('#account-error').textContent = '';
+  $('#f-name').value = parsed.account || parsed.name || '';
+  $('#f-issuer').value = parsed.issuer || '';
+  $('#f-secret').value = parsed.secret;
+  $('#f-type').value = parsed.type || 'totp';
+  $('#f-algorithm').value = parsed.algorithm || 'SHA1';
+  $('#f-digits').value = String(parsed.digits || 6);
+  $('#f-period').value = parsed.period || 30;
+  if (parsed.counter !== undefined) $('#f-counter').value = parsed.counter;
+  setTypeVisibility();
+}
 
 let parseTimer = null;
 $('#f-otpauth').addEventListener('input', (e) => {
@@ -320,19 +336,97 @@ $('#f-otpauth').addEventListener('input', (e) => {
     try {
       const parsed = await window.api.parseOtpauth(v);
       if (!parsed) { $('#account-error').textContent = '链接解析失败，请检查'; return; }
-      $('#account-error').textContent = '';
-      $('#f-name').value = parsed.account || '';
-      $('#f-issuer').value = parsed.issuer || '';
-      $('#f-secret').value = parsed.secret;
-      $('#f-type').value = parsed.type;
-      $('#f-algorithm').value = parsed.algorithm;
-      $('#f-digits').value = String(parsed.digits);
-      $('#f-period').value = parsed.period;
-      if (parsed.counter !== undefined) $('#f-counter').value = parsed.counter;
-      setTypeVisibility();
+      fillAccountForm(parsed);
       toast('已从链接解析填表');
     } catch (err) { $('#account-error').textContent = err.message; }
   }, 250);
+});
+
+/* ---------------- 二维码：扫码添加 / 出示 ---------------- */
+
+function applyScannedText(text) {
+  const parsed = window.OtpCore ? OtpCore.parseOtpauth(String(text || '').trim()) : null;
+  if (!parsed) { toast('二维码不是有效的 OTP 账号'); return false; }
+  fillAccountForm(parsed);
+  toast('扫码成功，已填入，检查后点保存');
+  return true;
+}
+
+async function scanImageFile(file) {
+  if (!file) return;
+  const text = await QrTools.decodeFile(file);
+  if (!text) { toast('没识别出二维码'); return; }
+  applyScannedText(text);
+}
+
+$('#btn-qr-file').addEventListener('click', () => $('#qr-file-input').click());
+$('#qr-file-input').addEventListener('change', (e) => {
+  scanImageFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+/* 弹窗打开时，粘贴图片直接识别 */
+document.addEventListener('paste', (e) => {
+  if ($('#account-modal').classList.contains('hidden')) return;
+  const item = Array.from(e.clipboardData?.items || []).find((i) => i.type.startsWith('image/'));
+  if (!item) return;
+  e.preventDefault();
+  scanImageFile(item.getAsFile());
+});
+
+/* 摄像头扫码（无摄像头/被拒绝时给出提示，走图片导入） */
+let camStream = null, camTimer = null;
+function stopCamera() {
+  if (camTimer) { clearInterval(camTimer); camTimer = null; }
+  if (camStream) { camStream.getTracks().forEach((t) => t.stop()); camStream = null; }
+  $('#qr-video').classList.add('hidden');
+  $('#btn-qr-camera').textContent = '摄像头扫码';
+}
+$('#btn-qr-camera').addEventListener('click', async () => {
+  if (camStream) { stopCamera(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast('当前环境不支持摄像头，请用图片导入');
+    return;
+  }
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  } catch (err) {
+    toast('打不开摄像头，请用图片导入');
+    return;
+  }
+  const video = $('#qr-video');
+  video.srcObject = camStream;
+  video.classList.remove('hidden');
+  $('#btn-qr-camera').textContent = '关闭摄像头';
+  const cv = document.createElement('canvas');
+  camTimer = setInterval(() => {
+    if (!video.videoWidth) return;
+    cv.width = video.videoWidth;
+    cv.height = video.videoHeight;
+    cv.getContext('2d').drawImage(video, 0, 0);
+    const text = QrTools.decodeCanvas(cv);
+    if (text) {
+      stopCamera();
+      applyScannedText(text);
+    }
+  }, 250);
+});
+
+/* 出示二维码：用本机密钥在渲染层本地生成，不出窗口 */
+async function openQrModal(acct) {
+  try {
+    const secret = await window.api.getSecret(acct.id);
+    const url = OtpCore.buildOtpauth(Object.assign({}, acct, { secret }));
+    $('#qr-modal-title').textContent = (acct.issuer ? acct.issuer + ' · ' : '') + acct.name;
+    $('#qr-modal-url').textContent = url;
+    QrTools.drawToCanvas($('#qr-canvas'), url);
+    $('#qr-modal').classList.remove('hidden');
+  } catch (e) { toast(e.message); }
+}
+function closeQrModal() { $('#qr-modal').classList.add('hidden'); }
+$('#btn-qr-close').addEventListener('click', closeQrModal);
+$('#qr-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeQrModal();
 });
 
 $('#btn-account-save').addEventListener('click', async () => {

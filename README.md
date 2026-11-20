@@ -4,13 +4,17 @@
 
 v2 起共三端：**桌面版**（Windows / macOS）、**浏览器插件**（Chrome / Edge）、安卓 App（v1 沿用）。桌面版与插件版共用同一套加密备份格式，可互相导入导出。
 
+**界面风格**：v2.1 起回到 v1 的视觉语言——近黑灰底（#1a1a1a / #222 / 卡片 #262626）+ 琥珀橙强调（#f5a623），圆角卡片（10px）与控件（6px），验证码用 Consolas 等宽大字。桌面版与插件版共用这套设计变量。
+
 > 截图：`docs/screenshots/`（待补：桌面版验证码页 / 日记页、插件 popup 截图各一张，装好后截真实界面替换）
 
 ## 功能
 
 - **验证码**：TOTP / HOTP，SHA1 / SHA256 / SHA512，6 / 8 位，周期可调（默认 30 秒）
-  - 大字等宽码 + 30 秒倒计时环，最后 5 秒变黄提醒
+  - 大字等宽码 + 30 秒倒计时环，最后 5 秒变红提醒
   - 添加时可粘贴 `otpauth://` 链接自动解析填表
+  - **扫码添加**（v2.1 恢复 v1 的功能）：导入二维码图片文件、或把图片直接粘贴进来，本地用 jsQR 解码出 `otpauth://` 后自动填表；桌面版还可开摄像头扫码
+  - **出示二维码**：每个账号都能把自己的 `otpauth://` 生成二维码显示（本地 qrcode-generator 生成），方便迁移到手机等其他设备
   - 桌面版点卡片复制；插件版点一下复制并**自动填入当前网页的验证码输入框**（识别 `autocomplete="one-time-code"`、关键词输入框、分散的单字框）
 - **日记**：按日期写日记（标题 + 正文 + 心情标签），可搜索、编辑、删除，只存在本地加密库里
 - **加密备份**：导出 / 导入加密 JSON 文件（桌面版 ⇄ 插件版互通），导出需输主密码确认
@@ -27,20 +31,20 @@ v2 起共三端：**桌面版**（Windows / macOS）、**浏览器插件**（Chr
 
 到 [Releases](https://github.com/yousj666/yousj-otp/releases) 下载：
 
-- **Windows**：`Yousj OTP Setup 2.0.0.exe`（安装版）或 `Yousj OTP 2.0.0.exe`（portable 免安装版）。未做代码签名，首次运行 SmartScreen 可能提示，点「更多信息 → 仍要运行」。
-- **macOS**：`Yousj OTP-2.0.0.dmg`（或 zip），区分 Intel（x64）与 Apple Silicon（arm64）。未签名，首次打开请**右键点应用 →「打开」**；若仍被拦，到「系统设置 → 隐私与安全性」里允许，或执行 `xattr -dr com.apple.quarantine /Applications/Yousj\ OTP.app`。
+- **Windows**：`Yousj OTP Setup 2.1.0.exe`（安装版）或 `Yousj OTP 2.1.0.exe`（portable 免安装版）。未做代码签名，首次运行 SmartScreen 可能提示，点「更多信息 → 仍要运行」。
+- **macOS**：`Yousj OTP-2.1.0.dmg`（或 zip），区分 Intel（x64）与 Apple Silicon（arm64）。未签名，首次打开请**右键点应用 →「打开」**；若仍被拦，到「系统设置 → 隐私与安全性」里允许，或执行 `xattr -dr com.apple.quarantine /Applications/Yousj\ OTP.app`。
 
 数据文件位置（Electron userData）：Windows `%APPDATA%/yousj-otp-desktop/`、macOS `~/Library/Application Support/yousj-otp-desktop/`，库文件名为 `vault.json`。
 
 ## 浏览器插件
 
-到 [Releases](https://github.com/yousj666/yousj-otp/releases) 下载 `yousj-otp-extension-v2.0.0.zip`，解压后：
+到 [Releases](https://github.com/yousj666/yousj-otp/releases) 下载 `yousj-otp-extension-v2.1.0.zip`，解压后：
 
 1. 打开 `chrome://extensions`（Edge 为 `edge://extensions`），开启开发者模式
 2. 「加载已解压的扩展程序」，选择解压出的目录
 3. 点工具栏图标，首次设置主密码
 
-popup 分「验证码 / 日记」两个标签页：验证码点一下即复制 + 自动填入网页；日记可快速记一条并看最近几条。账号增删、备份导入导出、改密码在「管理」（options）页。
+popup 分「验证码 / 日记」两个标签页：验证码点一下即复制 + 自动填入网页，popup 里也能直接「扫码添加」（上传二维码图片或粘贴图片）；日记可快速记一条并看最近几条。账号增删、出示二维码、备份导入导出、改密码在「管理」（options）页。
 
 > 从源码加载时注意：`extension/otp-core.js` 是构建时由 `node scripts/sync-core.mjs` 从 `core/` 同步的副本，克隆仓库后先跑一次该脚本再加载目录（Release 的 zip 已包含）。
 
@@ -60,9 +64,10 @@ cd desktop && npm install && npm start   # 本地运行桌面版
 
 结构：
 
-- `core/` — 共享核心（UMD，Node 与浏览器通用）：Base32、SHA-1/256/512、HMAC、TOTP/HOTP、otpauth 解析
+- `core/` — 共享核心（UMD，Node 与浏览器通用）：Base32、SHA-1/256/512、HMAC、TOTP/HOTP、otpauth 解析与生成
 - `desktop/` — Electron 桌面版（纯 HTML/CSS/JS 无框架，electron-builder 打包）
 - `extension/` — MV3 浏览器插件（popup + 管理页 + 自动填入内容脚本）
+- 二维码库均为本地打包、不走 CDN：解码 jsQR 1.4.0（`jsqr.min.js`，与 v1 同一份）、生成 qrcode-generator 2.0.4（`qrcode.js`），两端各一份副本，`qr-tools.js` 是薄封装
 - `android/` — 安卓 App（v1）
 - `.github/workflows/release.yml` — 推 `v*` 标签自动三端打包发 Release
 

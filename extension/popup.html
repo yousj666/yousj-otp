@@ -10,10 +10,7 @@
 
 <!-- 锁定 / 首次设置 -->
 <div id="view-lock">
-  <div class="pop-brand">
-    <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
-    <span>Yousj OTP</span>
-  </div>
+  <div class="pop-brand"><span class="brand-accent">Yousj</span> OTP</div>
   <p class="lock-sub" id="lock-sub">输入主密码解锁</p>
   <form id="lock-form">
     <input type="password" id="lock-password" placeholder="主密码" autocomplete="current-password">
@@ -27,52 +24,58 @@
 <!-- 主视图 -->
 <div id="view-main" class="hidden">
   <header class="pop-head">
-    <div class="pop-brand small">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
-      <span>Yousj OTP</span>
-    </div>
+    <div class="pop-brand small"><span class="brand-accent">Yousj</span> OTP</div>
     <div class="pop-head-actions">
-      <button class="icon-btn" id="btn-options" title="管理（账号 / 备份 / 设置）">管理</button>
-      <button class="icon-btn" id="btn-lock" title="锁定">锁定</button>
+      <button class="head-link" id="btn-options" title="管理（账号 / 备份 / 设置）">管理</button>
+      <button class="head-link" id="btn-lock" title="锁定">锁定</button>
+      <button id="addBtn" title="添加账号（打开管理页）">+</button>
     </div>
   </header>
 
-  <div class="tab-bar">
-    <button class="tab active" data-tab="codes">验证码</button>
-    <button class="tab" data-tab="diary">日记</button>
-  </div>
-
-  <!-- 验证码标签页 -->
-  <div id="tab-codes" class="tab-page">
-    <div class="search-box">
-      <input type="text" id="codes-search" placeholder="搜索账号…">
+  <div class="pop-body">
+    <div class="tab-bar">
+      <button class="tab active" data-tab="codes">验证码</button>
+      <button class="tab" data-tab="diary">日记</button>
     </div>
-    <div id="codes-list"></div>
-    <div id="codes-empty" class="empty hidden">
-      <p>还没有账号</p>
-      <p class="empty-sub">点右上角「管理」添加，或导入桌面版备份</p>
-    </div>
-    <p class="hint">点验证码：复制并尝试自动填入当前网页</p>
-  </div>
 
-  <!-- 日记标签页 -->
-  <div id="tab-diary" class="tab-page hidden">
-    <div class="quick-diary">
-      <div class="qd-row">
-        <input type="text" id="qd-title" placeholder="标题（可空）" maxlength="80">
-        <select id="qd-mood">
-          <option value="">无心情</option>
-          <option value="开心">开心</option>
-          <option value="平静">平静</option>
-          <option value="专注">专注</option>
-          <option value="疲惫">疲惫</option>
-          <option value="低落">低落</option>
-        </select>
+    <!-- 验证码标签页 -->
+    <div id="tab-codes" class="tab-page">
+      <div class="search-row">
+        <div class="search-box">
+          <input type="text" id="codes-search" placeholder="搜索账号…">
+        </div>
+        <button class="qr-scan-btn" id="btn-qr-scan" title="上传二维码图片添加账号">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="7" height="7" rx="1"/><rect x="13.5" y="3.5" width="7" height="7" rx="1"/><rect x="3.5" y="13.5" width="7" height="7" rx="1"/><path d="M13.5 13.5h3v3h-3zM17.5 17.5h3v3h-3z"/></svg>
+          扫码添加
+        </button>
+        <input type="file" id="qr-file-input" accept="image/*" class="hidden">
       </div>
-      <textarea id="qd-body" rows="3" placeholder="快速记一条…"></textarea>
-      <button class="btn btn-primary btn-block" id="qd-save">保存日记</button>
+      <div id="codes-list"></div>
+      <div id="codes-empty" class="empty hidden">
+        还没有账号<br>点右上角 + 添加<br>支持上传二维码图片自动解析
+      </div>
+      <p class="hint">点验证码：复制并尝试自动填入当前网页</p>
     </div>
-    <div id="diary-recent"></div>
+
+    <!-- 日记标签页 -->
+    <div id="tab-diary" class="tab-page hidden">
+      <div class="quick-diary">
+        <div class="qd-row">
+          <input type="text" id="qd-title" placeholder="标题（可空）" maxlength="80">
+          <select id="qd-mood">
+            <option value="">无心情</option>
+            <option value="开心">开心</option>
+            <option value="平静">平静</option>
+            <option value="专注">专注</option>
+            <option value="疲惫">疲惫</option>
+            <option value="低落">低落</option>
+          </select>
+        </div>
+        <textarea id="qd-body" rows="3" placeholder="快速记一条…"></textarea>
+        <button class="btn btn-primary btn-block" id="qd-save">保存日记</button>
+      </div>
+      <div id="diary-recent"></div>
+    </div>
   </div>
 </div>
 
@@ -80,6 +83,8 @@
 
 <script src="otp-core.js"></script>
 <script src="vault.js"></script>
+<script src="jsqr.min.js"></script>
+<script src="qr-tools.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

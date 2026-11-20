@@ -1,33 +1,39 @@
-/* Yousj OTP 插件版样式：与桌面版同一套设计变量 */
+/* Yousj OTP 插件版样式：与桌面版同一套设计变量
+   v2.1 起回到 v1 风格（extension/popup.html @ 7e0a5e8）：
+   底 #1a1a1a / 面板 #222 / 卡片 #262626(hover #2e2e2e) / 强调 #f5a623 /
+   文字 #e8e8e8·#aaa·#666 / 边框 #333·#444 / 圆角 卡片10·控件6·胶囊20 */
 :root {
-  --bg: #0d141b;
-  --bg-soft: #101922;
-  --surface: #16222e;
-  --surface-2: #1b2a39;
-  --surface-hover: #203344;
-  --border: #26394c;
-  --text: #e9f1f4;
-  --text-dim: #93a9b8;
-  --text-faint: #63798a;
-  --accent: #2aa79b;
-  --accent-strong: #3cc2b2;
-  --accent-ink: #06231f;
-  --danger: #e0655f;
-  --warn: #e0a458;
-  --radius: 14px;
-  --radius-sm: 10px;
-  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", Consolas, "Roboto Mono", monospace;
-  --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --bg: #1a1a1a;
+  --bg-soft: #222222;
+  --surface: #262626;
+  --surface-2: #2e2e2e;
+  --surface-hover: #383838;
+  --border: #333333;
+  --border-strong: #444444;
+  --text: #e8e8e8;
+  --text-dim: #aaaaaa;
+  --text-faint: #666666;
+  --accent: #f5a623;
+  --accent-strong: #ffb63d;
+  --accent-ink: #1a1a1a;
+  --danger: #ff6b6b;
+  --warn: #ff6b6b;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --mono: Consolas, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  --sans: system-ui, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
 .hidden { display: none !important; }
 button { font-family: inherit; cursor: pointer; }
 input, select, textarea { font-family: inherit; color: var(--text); color-scheme: dark; }
+::selection { background: rgba(245, 166, 35, .35); }
+.brand-accent { color: var(--accent); }
 
 .btn {
   background: var(--surface-2); color: var(--text);
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   padding: 8px 14px; font-size: 13.5px;
   transition: background .15s, border-color .15s, transform .1s;
 }
@@ -37,16 +43,16 @@ input, select, textarea { font-family: inherit; color: var(--text); color-scheme
 .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
 .btn-block { width: 100%; padding: 10px; }
 .btn-danger-ghost { background: transparent; border-color: transparent; color: var(--danger); }
-.btn-danger-ghost:hover { background: rgba(224, 101, 95, .1); }
+.btn-danger-ghost:hover { background: rgba(255, 107, 107, .1); }
 
 input[type="text"], input[type="password"], input[type="number"], input[type="date"],
 select, textarea {
-  background: var(--bg-soft); border: 1px solid var(--border);
+  background: var(--bg); border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm); padding: 9px 12px; font-size: 13.5px; outline: none;
   transition: border-color .15s, box-shadow .15s; width: 100%;
 }
 input:focus, select:focus, textarea:focus {
-  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42, 167, 155, .18);
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(245, 166, 35, .18);
 }
 textarea { resize: vertical; line-height: 1.6; }
 .form-error { color: var(--danger); font-size: 12.5px; min-height: 16px; }
@@ -61,14 +67,31 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px
 
 .mood-chip {
   display: inline-block; font-size: 11px; color: var(--accent-strong);
-  border: 1px solid rgba(42, 167, 155, .4); border-radius: 20px; padding: 1px 8px; margin-left: 6px;
+  border: 1px solid rgba(245, 166, 35, .4); border-radius: 20px; padding: 1px 8px; margin-left: 6px;
 }
 
+/* v1 式 toast：琥珀胶囊、深色字 */
 .toast {
   position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(8px);
-  background: var(--surface-2); border: 1px solid var(--accent); color: var(--text);
-  padding: 8px 18px; border-radius: 22px; font-size: 13px; z-index: 99;
+  background: var(--accent); border: none; color: var(--accent-ink); font-weight: 600;
+  padding: 8px 18px; border-radius: 20px; font-size: 13px; z-index: 99;
   opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
   white-space: nowrap;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 二维码 ---------- */
+.qr-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.qr-actions .qr-hint { font-size: 12px; color: var(--text-faint); }
+.qr-box {
+  background: #fff; border-radius: var(--radius); padding: 14px;
+  display: inline-block; line-height: 0;
+}
+.qr-box canvas { width: 220px; height: 220px; }
+.qr-panel { text-align: center; }
+.qr-url {
+  font-family: var(--mono); font-size: 11.5px; color: var(--text-dim);
+  word-break: break-all; line-height: 1.6; max-height: 84px; overflow-y: auto;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 10px; margin-top: 12px; text-align: left;
+}
