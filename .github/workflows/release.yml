@@ -1,0 +1,83 @@
+name: Release
+
+# 推 v* 标签触发：三端并行打包，产物汇到同一个 GitHub Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: RFC 官方测试向量（硬验收）
+        run: node core/test-rfc.js
+      - name: 加密备份跨端兼容测试
+        run: node core/test-vault-compat.js
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 同步 core
+        run: node scripts/sync-core.mjs
+      - name: 打包（NSIS 安装包 + portable exe）
+        working-directory: desktop
+        run: |
+          npm install
+          npx electron-builder --win --publish never
+      - name: 上传到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: desktop/dist/*.exe
+
+  macos:
+    needs: test
+    runs-on: macos-latest
+    env:
+      # 未签名构建：跳过证书发现（用户右键打开即可，见 README）
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 同步 core
+        run: node scripts/sync-core.mjs
+      - name: 打包（dmg + zip，x64/arm64）
+        working-directory: desktop
+        run: |
+          npm install
+          npx electron-builder --mac --publish never
+      - name: 上传到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+
+  extension:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 同步 core 并打包插件 zip
+        run: |
+          node scripts/sync-core.mjs
+          cd extension
+          zip -r "../yousj-otp-extension-${{ github.ref_name }}.zip" . -x '.*'
+      - name: 上传到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: yousj-otp-extension-${{ github.ref_name }}.zip

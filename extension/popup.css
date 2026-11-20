@@ -1,0 +1,85 @@
+/* popup 专属布局（宽 372px） */
+body { width: 372px; max-height: 580px; overflow-y: auto; padding: 14px; }
+
+.pop-brand {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 17px; color: var(--text);
+}
+.pop-brand svg { color: var(--accent-strong); }
+.pop-brand.small { font-size: 14.5px; }
+
+#view-lock { padding: 10px 4px 4px; }
+#view-lock .pop-brand { justify-content: center; margin-bottom: 8px; }
+.lock-sub { text-align: center; color: var(--text-dim); font-size: 13px; margin-bottom: 14px; }
+#lock-form { display: flex; flex-direction: column; gap: 9px; }
+.lock-note { text-align: center; margin-top: 12px; color: var(--text-faint); font-size: 12px; }
+
+.pop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.pop-head-actions { display: flex; gap: 6px; }
+.icon-btn {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-dim);
+  border-radius: 8px; padding: 5px 11px; font-size: 12.5px;
+}
+.icon-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.tab-bar {
+  display: flex; background: var(--bg-soft); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 3px; gap: 3px; margin-bottom: 12px;
+}
+.tab {
+  flex: 1; background: transparent; border: none; color: var(--text-dim);
+  padding: 7px 0; border-radius: 8px; font-size: 13.5px; transition: all .15s;
+}
+.tab.active { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.tab-page { animation: pageIn .22s ease; }
+@keyframes pageIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+.search-box input { padding: 8px 12px; }
+#codes-list { display: flex; flex-direction: column; gap: 9px; margin-top: 10px; }
+.code-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 11px 14px; cursor: pointer; text-align: left;
+  color: var(--text); transition: background .15s, border-color .15s;
+}
+.code-item:hover { background: var(--surface-2); border-color: #31506b; }
+.code-item .meta { flex: 1; min-width: 0; }
+.code-item .issuer {
+  font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--accent-strong); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.code-item .name {
+  font-size: 12.5px; color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.code-item .code {
+  font-family: var(--mono); font-size: 21px; font-weight: 600; letter-spacing: 2px;
+}
+.code-item .code.urgent { color: var(--warn); }
+.ring-wrap { position: relative; width: 34px; height: 34px; flex-shrink: 0; }
+.ring-wrap svg { transform: rotate(-90deg); }
+.ring-bg { stroke: var(--border); }
+.ring-fg { stroke: var(--accent); transition: stroke-dashoffset 1s linear, stroke .3s; }
+.ring-fg.urgent { stroke: var(--warn); }
+.hotp-tag { font-size: 11px; color: var(--text-faint); border: 1px solid var(--border); border-radius: 12px; padding: 2px 8px; }
+
+.empty { text-align: center; padding: 30px 0 10px; color: var(--text-dim); }
+.empty-sub { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+.hint { text-align: center; color: var(--text-faint); font-size: 11.5px; margin-top: 12px; }
+
+.quick-diary { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
+.qd-row { display: flex; gap: 8px; }
+.qd-row input { flex: 1; }
+.qd-row select { width: 104px; }
+#diary-recent { display: flex; flex-direction: column; gap: 8px; }
+.recent-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.recent-item .r-date { font-size: 11px; color: var(--text-faint); font-family: var(--mono); }
+.recent-item .r-title { font-size: 13px; font-weight: 600; margin: 2px 0; }
+.recent-item .r-body {
+  font-size: 12.5px; color: var(--text-dim); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}

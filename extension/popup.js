@@ -1,236 +1,290 @@
-/* Yousj OTP - TOTP 验证码生成器 */
-"use strict";
+/* Yousj OTP 插件 popup：验证码（复制 + 自动填入） / 日记（速记 + 最近） */
+'use strict';
 
-const PERIOD = 30;   // 30 秒一变（标准 TOTP）
-const DIGITS = 6;
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-/* ---------- Base32 解码 ---------- */
-function base32Decode(s) {
-  const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  s = s.toUpperCase().replace(/[^A-Z2-7]/g, "");
-  let bits = 0, val = 0, out = [];
-  for (const ch of s) {
-    val = (val << 5) | alpha.indexOf(ch);
-    bits += 5;
-    if (bits >= 8) { out.push((val >>> (bits - 8)) & 0xff); bits -= 8; }
-  }
-  return new Uint8Array(out);
-}
+const state = {
+  password: null,
+  data: null,
+  ticker: null
+};
 
-/* ---------- TOTP 生成 ---------- */
-async function totp(secret, period) {
-  period = period || PERIOD;
-  const key = base32Decode(secret);
-  const counter = Math.floor(Date.now() / 1000 / period);
-  const buf = new ArrayBuffer(8);
-  new DataView(buf).setUint32(4, counter); // 大端，低 32 位
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw", key, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
-  const hmac = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, buf));
-  const off = hmac[hmac.length - 1] & 0x0f;
-  const n = ((hmac[off] & 0x7f) << 24 | (hmac[off+1] & 0xff) << 16 |
-             (hmac[off+2] & 0xff) << 8 | (hmac[off+3] & 0xff)) % 10 ** DIGITS;
-  return String(n).padStart(DIGITS, "0");
-}
-
-/* ---------- otpauth:// 解析 ---------- */
-function parseOtpAuth(url) {
-  // otpauth://totp/名字?secret=XXX&issuer=YYY&period=60
-  const m = url.match(/^otpauth:\/\/totp\/([^?]+)\?(.+)$/i);
-  if (!m) return null;
-  const label = decodeURIComponent(m[1]);
-  const q = new URLSearchParams(m[2]);
-  const secret = q.get("secret");
-  if (!secret) return null;
-  const issuer = q.get("issuer") || "";
-  const period = parseInt(q.get("period") || "30", 10);
-  // label 可能是 "issuer:account" 格式
-  const name = label.includes(":") ? label.split(":").slice(1).join(":") : label;
-  return { name: issuer ? `${issuer} (${name})` : name, secret,
-           period: Number.isInteger(period) && period >= 10 && period <= 3600 ? period : 30 };
-}
-
-/* ---------- 存储 ---------- */
-async function loadAccounts() {
-  const r = await chrome.storage.local.get("accounts");
-  const a = r.accounts || [];
-  // 迁移：旧版默认时长误写为 15 秒，存量 15 一律修正为标准 30 秒
-  let migrated = false;
-  for (const acc of a) if (acc.period === 15) { acc.period = 30; migrated = true; }
-  if (migrated) await saveAccounts(a);
-  return a;
-}
-async function saveAccounts(a) {
-  await chrome.storage.local.set({ accounts: a });
-}
-
-/* ---------- UI ---------- */
-const listEl = document.getElementById("list");
-const toastEl = document.getElementById("toast");
-let toastTimer = null;
-
-function toast(msg) {
-  toastEl.textContent = msg;
-  toastEl.style.opacity = 1;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.style.opacity = 0, 1200);
-}
-
-function secondsLeft(period) {
-  period = period || PERIOD;
-  return period - Math.floor(Date.now() / 1000) % period;
-}
-
-/* 倒计时圆环 SVG */
-function ringSVG(sec, period) {
-  period = period || PERIOD;
-  const r = 14, c = 2 * Math.PI * r;
-  const frac = sec / period;
-  const color = sec <= 5 ? "#ff6b6b" : "#f5a623";
-  return `<svg class="ring" viewBox="0 0 34 34">
-    <circle cx="17" cy="17" r="${r}" fill="none" stroke="#444" stroke-width="3"/>
-    <circle cx="17" cy="17" r="${r}" fill="none" stroke="${color}" stroke-width="3"
-      stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - frac)}"
-      transform="rotate(-90 17 17)" stroke-linecap="round"/>
-    <text x="17" y="21" text-anchor="middle" font-size="10" fill="#aaa">${sec}</text>
-  </svg>`;
-}
-
-async function render() {
-  const accounts = await loadAccounts();
-  if (!accounts.length) {
-    listEl.innerHTML = `<div class="empty">还没有账号<br>点右上角 + 添加<br>支持上传二维码图片自动解析</div>`;
-    return;
-  }
-  const sec = 0; // 占位，每卡独立计算
-  let html = "";
-  for (let i = 0; i < accounts.length; i++) {
-    const period = accounts[i].period || 30;
-    const sLeft = secondsLeft(period);
-    const code = await totp(accounts[i].secret, period).catch(() => "------");
-    html += `<div class="card" data-i="${i}">
-      <div><div class="name">${esc(accounts[i].name)}${period !== 30 ? ` · ${period}s` : ""}</div>
-      <div class="code">${code.slice(0,3)} ${code.slice(3)}</div></div>
-      <div style="display:flex;align-items:center">${ringSVG(sLeft, period)}
-      <span class="edit" data-edit="${i}" title="编辑">✎</span>
-      <span class="del" data-del="${i}" title="删除">×</span></div>
-    </div>`;
-  }
-  listEl.innerHTML = html;
-}
+const DEFAULT_DATA = () => ({ accounts: [], diary: [], settings: { autoLockMinutes: 5 } });
 
 function esc(s) {
-  return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/* 点击复制 / 删除 / 编辑（事件委托） */
-listEl.addEventListener("click", async (e) => {
-  const del = e.target.closest("[data-del]");
-  if (del) {
-    e.stopPropagation();
-    const i = +del.dataset.del;
-    const accounts = await loadAccounts();
-    if (confirm(`删除「${accounts[i].name}」？`)) {
-      accounts.splice(i, 1);
-      await saveAccounts(accounts);
-      render();
-    }
-    return;
-  }
-  const edt = e.target.closest("[data-edit]");
-  if (edt) {
-    e.stopPropagation();
-    const i = +edt.dataset.edit;
-    const accounts = await loadAccounts();
-    const a = accounts[i];
-    document.getElementById("inpName").value = a.name;
-    document.getElementById("inpSecret").value = a.secret;
-    document.getElementById("inpPeriod").value = a.period || 30;
-    editingIndex = i;
-    document.getElementById("btnManual").textContent = "保存修改";
-    addPanel.classList.add("show");
-    return;
-  }
-  const card = e.target.closest(".card");
-  if (card) {
-    const code = card.querySelector(".code").textContent.replace(/\s/g, "");
-    await navigator.clipboard.writeText(code);
-    toast("已复制 " + code);
-  }
-});
+let toastTimer = null;
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  requestAnimationFrame(() => el.classList.add('show'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.classList.add('hidden'), 250);
+  }, 1900);
+}
 
-/* ---------- 添加 / 编辑 ---------- */
-const addPanel = document.getElementById("addPanel");
-let editingIndex = -1;  // -1 = 新增，>=0 = 正在编辑第几个
+function groupCode(code, digits) {
+  if (!code || code.includes('-')) return code || '------';
+  if (digits === 8) return code.slice(0, 4) + ' ' + code.slice(4);
+  if (digits === 6) return code.slice(0, 3) + ' ' + code.slice(3);
+  return code;
+}
 
-document.getElementById("addBtn").onclick = () => {
-  // 点 + 时重置为新增模式
-  editingIndex = -1;
-  document.getElementById("btnManual").textContent = "手动添加";
-  document.getElementById("inpName").value = "";
-  document.getElementById("inpSecret").value = "";
-  document.getElementById("inpPeriod").value = "";
-  addPanel.classList.toggle("show");
-};
+/* ---------- 持久化：每次变更后重新加密落盘 + 刷新会话 ---------- */
+async function persist() {
+  const envelope = await ExtVault.encryptEnvelope(state.data, state.password);
+  await ExtVault.saveStoredEnvelope(envelope);
+  await ExtVault.saveSession(state.password, state.data);
+}
 
-document.getElementById("btnManual").onclick = async () => {
-  const name = document.getElementById("inpName").value.trim();
-  const secret = document.getElementById("inpSecret").value.trim().replace(/\s/g, "");
-  const periodRaw = document.getElementById("inpPeriod").value.trim();
-  const period = periodRaw ? parseInt(periodRaw, 10) : 30;
-  if (!name || !secret) { toast("名字和密钥都要填"); return; }
-  if (!Number.isInteger(period) || period < 10 || period > 3600) {
-    toast("时长填 10~3600 的整数秒"); return;
-  }
-  // 校验密钥能算出码
-  try { await totp(secret, period); }
-  catch { toast("密钥格式不对"); return; }
-  const accounts = await loadAccounts();
-  if (editingIndex >= 0 && editingIndex < accounts.length) {
-    accounts[editingIndex] = { name, secret, period };
-    toast("已保存修改");
+/* ---------- 锁定 / 解锁 ---------- */
+
+let lockMode = 'unlock';
+
+function showLock(mode) {
+  lockMode = mode;
+  stopTicker();
+  $('#view-main').classList.add('hidden');
+  $('#view-lock').classList.remove('hidden');
+  if (mode === 'setup') {
+    $('#lock-sub').textContent = '首次使用，先设置一个主密码（务必记住，无法找回）';
+    $('#lock-password2').classList.remove('hidden');
+    $('#lock-submit').textContent = '设置主密码并进入';
   } else {
-    accounts.push({ name, secret, period });
-    toast("已添加");
+    $('#lock-sub').textContent = '输入主密码解锁';
+    $('#lock-password2').classList.add('hidden');
+    $('#lock-submit').textContent = '解锁';
   }
-  await saveAccounts(accounts);
-  editingIndex = -1;
-  document.getElementById("btnManual").textContent = "手动添加";
-  document.getElementById("inpName").value = "";
-  document.getElementById("inpSecret").value = "";
-  document.getElementById("inpPeriod").value = "";
-  addPanel.classList.remove("show");
-  render();
-};
+  $('#lock-password').focus();
+}
 
-/* 上传二维码图片 → jsQR 解析 */
-document.getElementById("btnQR").onclick = () =>
-  document.getElementById("qrInput").click();
+function showMain() {
+  $('#view-lock').classList.add('hidden');
+  $('#view-main').classList.remove('hidden');
+  renderCodes();
+  renderRecentDiary();
+  startTicker();
+}
 
-document.getElementById("qrInput").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const img = new Image();
-  img.onload = () => {
-    const cv = document.createElement("canvas");
-    cv.width = img.width; cv.height = img.height;
-    const ctx = cv.getContext("2d");
-    ctx.drawImage(img, 0, 0);
-    const data = ctx.getImageData(0, 0, cv.width, cv.height);
-    const qr = jsQR(data.data, cv.width, cv.height);
-    if (!qr || !qr.data) { toast("没识别出二维码"); return; }
-    const p = parseOtpAuth(qr.data.trim());
-    if (!p) { toast("不是有效的 OTP 二维码"); return; }
-    document.getElementById("inpName").value = p.name;
-    document.getElementById("inpSecret").value = p.secret;
-    document.getElementById("inpPeriod").value = p.period || 30;
-    toast("已填入，检查后点「手动添加」保存");
-    URL.revokeObjectURL(img.src);
-  };
-  img.src = URL.createObjectURL(file);
-  e.target.value = ""; // 允许重复选同一文件
+$('#lock-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw = $('#lock-password').value;
+  const errEl = $('#lock-error');
+  errEl.textContent = '';
+  try {
+    if (lockMode === 'setup') {
+      if (pw.length < 4) throw new Error('主密码至少 4 位');
+      if (pw !== $('#lock-password2').value) throw new Error('两次输入的密码不一致');
+      state.password = pw;
+      state.data = DEFAULT_DATA();
+      await persist();
+    } else {
+      const envelope = await ExtVault.loadStoredEnvelope();
+      if (!envelope) { showLock('setup'); return; }
+      state.data = await ExtVault.decryptEnvelope(envelope, pw); // 错密码抛错
+      state.password = pw;
+      await ExtVault.saveSession(pw, state.data);
+    }
+    $('#lock-password').value = '';
+    $('#lock-password2').value = '';
+    showMain();
+  } catch (err) {
+    errEl.textContent = lockMode === 'unlock' ? '密码不正确' : err.message;
+  }
 });
 
-/* ---------- 刷新循环：每秒更新码 + 倒计时 ---------- */
-render();
-setInterval(render, 1000);
+$('#btn-lock').addEventListener('click', async () => {
+  await ExtVault.clearSession();
+  state.password = null;
+  state.data = null;
+  showLock('unlock');
+});
+
+$('#btn-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
+
+/* ---------- 标签页 ---------- */
+
+$$('.tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    $$('.tab').forEach((t) => t.classList.toggle('active', t === tab));
+    $('#tab-codes').classList.toggle('hidden', tab.dataset.tab !== 'codes');
+    $('#tab-diary').classList.toggle('hidden', tab.dataset.tab !== 'diary');
+  });
+});
+
+/* ---------- 验证码 ---------- */
+
+const RING_C = 2 * Math.PI * 13.5;
+
+function computeCode(acct) {
+  return OtpCore.codeFromSecret(acct.secret, {
+    type: acct.type || 'totp',
+    counter: acct.counter || 0,
+    algorithm: acct.algorithm || 'SHA1',
+    digits: acct.digits || 6,
+    period: acct.period || 30
+  });
+}
+
+function renderCodes() {
+  const list = $('#codes-list');
+  const q = $('#codes-search').value.trim().toLowerCase();
+  const accounts = state.data.accounts.filter((a) =>
+    !q || (a.name + ' ' + (a.issuer || '')).toLowerCase().includes(q));
+  $('#codes-empty').classList.toggle('hidden', state.data.accounts.length > 0);
+  const now = Math.floor(Date.now() / 1000);
+  list.innerHTML = accounts.map((acct) => {
+    const isHotp = acct.type === 'hotp';
+    let code = '------';
+    let remaining = null;
+    try {
+      code = computeCode(acct);
+      if (!isHotp) remaining = OtpCore.remainingSeconds(acct.period || 30, now);
+    } catch (e) { /* 密钥损坏时显示占位 */ }
+    const urgent = remaining !== null && remaining <= 5;
+    return `
+    <button class="code-item" data-id="${acct.id}">
+      <span class="meta">
+        <span class="issuer">${esc(acct.issuer || '—')}</span>
+        <span class="name">${esc(acct.name)}</span>
+      </span>
+      <span class="code ${urgent ? 'urgent' : ''}" data-role="code">${esc(groupCode(code, acct.digits))}</span>
+      ${isHotp
+        ? '<span class="hotp-tag">计数器</span>'
+        : `<span class="ring-wrap"><svg width="34" height="34">
+             <circle class="ring-bg" cx="17" cy="17" r="13.5" fill="none" stroke-width="3"></circle>
+             <circle class="ring-fg ${urgent ? 'urgent' : ''}" data-role="ring" cx="17" cy="17" r="13.5" fill="none"
+               stroke-width="3" stroke-linecap="round" stroke-dasharray="${RING_C}"
+               stroke-dashoffset="${remaining !== null ? RING_C * (1 - remaining / (acct.period || 30)) : 0}"></circle>
+           </svg></span>`}
+    </button>`;
+  }).join('');
+  list.querySelectorAll('.code-item').forEach((el) => {
+    el.addEventListener('click', () => onCodeClick(el.dataset.id));
+  });
+}
+
+function refreshCodesInPlace() {
+  if (!state.data) return;
+  const now = Math.floor(Date.now() / 1000);
+  $$('#codes-list .code-item').forEach((el) => {
+    const acct = state.data.accounts.find((a) => a.id === el.dataset.id);
+    if (!acct || acct.type === 'hotp') return;
+    let code;
+    try { code = computeCode(acct); } catch (e) { return; }
+    const remaining = OtpCore.remainingSeconds(acct.period || 30, now);
+    const codeEl = el.querySelector('[data-role="code"]');
+    const ringEl = el.querySelector('[data-role="ring"]');
+    codeEl.textContent = groupCode(code, acct.digits);
+    codeEl.classList.toggle('urgent', remaining <= 5);
+    if (ringEl) {
+      ringEl.style.strokeDashoffset = String(RING_C * (1 - remaining / (acct.period || 30)));
+      ringEl.classList.toggle('urgent', remaining <= 5);
+    }
+  });
+}
+
+async function onCodeClick(id) {
+  const acct = state.data.accounts.find((a) => a.id === id);
+  if (!acct) return;
+  let code;
+  try {
+    code = computeCode(acct);
+  } catch (e) { toast('密钥无效，无法生成'); return; }
+  if (acct.type === 'hotp') {
+    acct.counter = (acct.counter || 0) + 1;
+    await persist();
+    renderCodes();
+  }
+  // 1) 复制
+  let copied = false;
+  try { await navigator.clipboard.writeText(code); copied = true; } catch (e) { /* 忽略 */ }
+  // 2) 尝试填入当前标签页
+  let filled = false;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab && tab.id !== undefined) {
+      const res = await chrome.tabs.sendMessage(tab.id, { type: 'FILL_CODE', code });
+      filled = !!(res && res.filled);
+    }
+  } catch (e) { /* 页面无内容脚本（如 chrome:// 页） */ }
+  if (filled) toast(`已填入并复制 ${code}`);
+  else if (copied) toast(`已复制 ${code}（未找到验证码输入框）`);
+  else toast(code);
+}
+
+$('#codes-search').addEventListener('input', renderCodes);
+
+function startTicker() {
+  stopTicker();
+  state.ticker = setInterval(refreshCodesInPlace, 1000);
+}
+function stopTicker() {
+  if (state.ticker) { clearInterval(state.ticker); state.ticker = null; }
+}
+
+/* ---------- 日记 ---------- */
+
+function renderRecentDiary() {
+  const box = $('#diary-recent');
+  const recent = state.data.diary.slice(0, 5);
+  if (!recent.length) {
+    box.innerHTML = '<div class="empty"><p>暂无日记</p></div>';
+    return;
+  }
+  box.innerHTML = recent.map((d) => `
+    <div class="recent-item">
+      <span class="r-date">${esc(d.date)}</span>${d.mood ? `<span class="mood-chip">${esc(d.mood)}</span>` : ''}
+      <div class="r-title">${esc(d.title || '（无标题）')}</div>
+      <div class="r-body">${esc(d.body)}</div>
+    </div>`).join('');
+}
+
+$('#qd-save').addEventListener('click', async () => {
+  const title = $('#qd-title').value.trim();
+  const body = $('#qd-body').value;
+  if (!title && !body.trim()) { toast('先写点内容'); return; }
+  const now = Date.now();
+  state.data.diary.unshift({
+    id: (crypto.randomUUID ? crypto.randomUUID() : 'd' + now + Math.floor(Math.random() * 1e6)),
+    date: new Date().toISOString().slice(0, 10),
+    title, body, mood: $('#qd-mood').value,
+    createdAt: now, updatedAt: now
+  });
+  await persist();
+  $('#qd-title').value = '';
+  $('#qd-body').value = '';
+  renderRecentDiary();
+  toast('日记已保存');
+});
+
+/* ---------- 启动 ---------- */
+
+(async function boot() {
+  const envelope = await ExtVault.loadStoredEnvelope();
+  if (!envelope) { showLock('setup'); return; }
+  const session = await ExtVault.loadSession();
+  if (session && session.password && session.data) {
+    const mins = Number(session.data.settings && session.data.settings.autoLockMinutes);
+    const expired = mins > 0 && Date.now() - (session.unlockedAt || 0) > mins * 60 * 1000;
+    if (!expired) {
+      state.password = session.password;
+      state.data = session.data;
+      showMain();
+      return;
+    }
+    await ExtVault.clearSession();
+  }
+  showLock('unlock');
+})().catch((e) => {
+  $('#lock-error').textContent = e.message;
+  showLock('unlock');
+});

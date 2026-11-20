@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Yousj OTP · 管理</title>
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="options.css">
+</head>
+<body>
+
+<!-- 锁定 / 首次设置 -->
+<div id="view-lock" class="lock-wrap hidden">
+  <div class="card lock-card">
+    <h2>Yousj OTP</h2>
+    <p class="lock-sub" id="lock-sub">输入主密码解锁</p>
+    <form id="lock-form">
+      <input type="password" id="lock-password" placeholder="主密码" autocomplete="current-password">
+      <input type="password" id="lock-password2" placeholder="再输一次主密码" autocomplete="new-password" class="hidden">
+      <p class="form-error" id="lock-error"></p>
+      <button type="submit" class="btn btn-primary btn-block" id="lock-submit">解锁</button>
+    </form>
+  </div>
+</div>
+
+<!-- 管理主视图 -->
+<div id="view-main" class="hidden">
+  <header class="opt-head">
+    <h1>Yousj OTP · 管理</h1>
+    <button class="btn" id="btn-lock">锁定</button>
+  </header>
+
+  <section class="card">
+    <h3>账号管理</h3>
+    <div id="accounts-list"></div>
+    <hr class="sep">
+    <h4 id="account-form-title">添加账号</h4>
+    <label class="field">粘贴 otpauth:// 链接（自动解析填表）
+      <input type="text" id="f-otpauth" placeholder="otpauth://totp/…">
+    </label>
+    <div class="form-grid">
+      <label class="field">名称（账号）<input type="text" id="f-name" placeholder="alice@example.com"></label>
+      <label class="field">发行方<input type="text" id="f-issuer" placeholder="GitHub"></label>
+      <label class="field span2">密钥（Base32）<input type="text" id="f-secret" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off"></label>
+      <label class="field">类型
+        <select id="f-type"><option value="totp">TOTP（时间）</option><option value="hotp">HOTP（计数器）</option></select>
+      </label>
+      <label class="field">算法
+        <select id="f-algorithm"><option value="SHA1">SHA1</option><option value="SHA256">SHA256</option><option value="SHA512">SHA512</option></select>
+      </label>
+      <label class="field">位数
+        <select id="f-digits"><option value="6">6 位</option><option value="8">8 位</option></select>
+      </label>
+      <label class="field" id="f-period-wrap">周期（秒）<input type="number" id="f-period" value="30" min="5" max="3600"></label>
+      <label class="field hidden" id="f-counter-wrap">计数器<input type="number" id="f-counter" value="0" min="0"></label>
+    </div>
+    <p class="form-error" id="account-error"></p>
+    <div class="row-end">
+      <button class="btn hidden" id="btn-account-reset">取消编辑</button>
+      <button class="btn btn-primary" id="btn-account-save">保存账号</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>日记管理</h3>
+    <div id="diary-list"></div>
+    <hr class="sep">
+    <h4 id="diary-form-title">写日记</h4>
+    <div class="form-grid">
+      <label class="field">日期<input type="date" id="d-date"></label>
+      <label class="field">心情
+        <select id="d-mood">
+          <option value="">无心情</option><option value="开心">开心</option><option value="平静">平静</option>
+          <option value="专注">专注</option><option value="疲惫">疲惫</option><option value="低落">低落</option>
+        </select>
+      </label>
+      <label class="field span2">标题<input type="text" id="d-title" maxlength="80" placeholder="标题（可空）"></label>
+    </div>
+    <label class="field">正文<textarea id="d-body" rows="5" placeholder="今天发生了什么…"></textarea></label>
+    <p class="form-error" id="diary-error"></p>
+    <div class="row-end">
+      <button class="btn hidden" id="btn-diary-reset">取消编辑</button>
+      <button class="btn btn-primary" id="btn-diary-save">保存日记</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>备份</h3>
+    <p class="card-desc">与桌面版共用同一种加密备份文件，可互导。导入会<strong>整体替换</strong>当前账号与日记。</p>
+    <div class="form-grid">
+      <label class="field">导出：输入主密码确认<input type="password" id="export-password"></label>
+      <label class="field">导入：备份文件的密码<input type="password" id="import-password"></label>
+    </div>
+    <div class="row-end">
+      <label class="btn" for="import-file">选择备份文件并导入</label>
+      <input type="file" id="import-file" accept=".json,application/json" class="hidden">
+      <button class="btn btn-primary" id="btn-export">导出备份</button>
+    </div>
+    <p class="form-error" id="backup-msg"></p>
+  </section>
+
+  <section class="card">
+    <h3>设置</h3>
+    <div class="form-grid">
+      <label class="field">当前密码<input type="password" id="pw-old"></label>
+      <label class="field">自动锁定
+        <select id="autolock-select">
+          <option value="1">1 分钟</option><option value="5">5 分钟</option>
+          <option value="15">15 分钟</option><option value="30">30 分钟</option><option value="0">从不</option>
+        </select>
+      </label>
+      <label class="field">新密码<input type="password" id="pw-new"></label>
+      <label class="field">确认新密码<input type="password" id="pw-new2"></label>
+    </div>
+    <p class="form-error" id="settings-msg"></p>
+    <div class="row-end">
+      <button class="btn" id="btn-autolock-save">保存自动锁定</button>
+      <button class="btn btn-primary" id="btn-change-pw">修改主密码</button>
+    </div>
+  </section>
+
+  <p class="foot">Yousj OTP v2.0.0 · 数据只存浏览器本地（chrome.storage.local），全程 AES-256-GCM 加密，密钥由主密码经 PBKDF2（210000 次）派生。</p>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="otp-core.js"></script>
+<script src="vault.js"></script>
+<script src="options.js"></script>
+</body>
+</html>

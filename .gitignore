@@ -10,3 +10,10 @@ android/build/
 __pycache__/
 *.pyc
 .DS_Store
+
+# v2 桌面版 / 插件版
+node_modules/
+desktop/dist/
+# core 同步副本（由 scripts/sync-core.mjs 从 core/otp-core.js 生成，勿手改）
+desktop/core.js
+extension/otp-core.js

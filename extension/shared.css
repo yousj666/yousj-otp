@@ -1,0 +1,74 @@
+/* Yousj OTP 插件版样式：与桌面版同一套设计变量 */
+:root {
+  --bg: #0d141b;
+  --bg-soft: #101922;
+  --surface: #16222e;
+  --surface-2: #1b2a39;
+  --surface-hover: #203344;
+  --border: #26394c;
+  --text: #e9f1f4;
+  --text-dim: #93a9b8;
+  --text-faint: #63798a;
+  --accent: #2aa79b;
+  --accent-strong: #3cc2b2;
+  --accent-ink: #06231f;
+  --danger: #e0655f;
+  --warn: #e0a458;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", Consolas, "Roboto Mono", monospace;
+  --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+.hidden { display: none !important; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; color: var(--text); color-scheme: dark; }
+
+.btn {
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 14px; font-size: 13.5px;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.btn:hover { background: var(--surface-hover); }
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.btn-block { width: 100%; padding: 10px; }
+.btn-danger-ghost { background: transparent; border-color: transparent; color: var(--danger); }
+.btn-danger-ghost:hover { background: rgba(224, 101, 95, .1); }
+
+input[type="text"], input[type="password"], input[type="number"], input[type="date"],
+select, textarea {
+  background: var(--bg-soft); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px 12px; font-size: 13.5px; outline: none;
+  transition: border-color .15s, box-shadow .15s; width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42, 167, 155, .18);
+}
+textarea { resize: vertical; line-height: 1.6; }
+.form-error { color: var(--danger); font-size: 12.5px; min-height: 16px; }
+.form-error.ok { color: var(--accent-strong); }
+label.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text-dim); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.span2 { grid-column: span 2; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.card h3 { font-size: 15px; margin-bottom: 8px; }
+.card-desc { color: var(--text-dim); font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
+
+.mood-chip {
+  display: inline-block; font-size: 11px; color: var(--accent-strong);
+  border: 1px solid rgba(42, 167, 155, .4); border-radius: 20px; padding: 1px 8px; margin-left: 6px;
+}
+
+.toast {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(8px);
+  background: var(--surface-2); border: 1px solid var(--accent); color: var(--text);
+  padding: 8px 18px; border-radius: 22px; font-size: 13px; z-index: 99;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

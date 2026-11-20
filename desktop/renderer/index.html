@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>Yousj OTP</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- 锁定 / 首次设置 -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+    </div>
+    <h1>Yousj OTP</h1>
+    <p class="lock-sub" id="lock-sub">输入主密码解锁你的验证码与日记</p>
+    <form id="lock-form">
+      <input type="password" id="lock-password" placeholder="主密码" autocomplete="current-password">
+      <input type="password" id="lock-password2" placeholder="再输一次主密码" autocomplete="new-password" class="hidden">
+      <p class="form-error" id="lock-error"></p>
+      <button type="submit" class="btn btn-primary btn-block" id="lock-submit">解锁</button>
+    </form>
+    <p class="lock-note">数据只存本机，全程加密（AES-256-GCM），不联网。</p>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="app" class="hidden">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+      <span>Yousj OTP</span>
+    </div>
+    <nav class="side-nav">
+      <button class="nav-item active" data-page="codes">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>
+        验证码
+      </button>
+      <button class="nav-item" data-page="diary">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h13a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5z"/><path d="M5 4v16"/><path d="M9 9h6M9 13h6"/></svg>
+        日记
+      </button>
+      <button class="nav-item" data-page="backup">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>
+        备份
+      </button>
+      <button class="nav-item" data-page="settings">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.14-1.4l2-1.55-2-3.46-2.36.95A7 7 0 0 0 14 5.1L13.7 2.6h-3.4L10 5.1a7 7 0 0 0-2.5 1.44l-2.36-.95-2 3.46 2 1.55a7 7 0 0 0 0 2.8l-2 1.55 2 3.46 2.36-.95A7 7 0 0 0 10 18.9l.3 2.5h3.4l.3-2.5a7 7 0 0 0 2.5-1.44l2.36.95 2-3.46-2-1.55c.1-.45.14-.92.14-1.4z"/></svg>
+        设置
+      </button>
+    </nav>
+    <button class="nav-item side-lock" id="btn-lock">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      锁定
+    </button>
+  </aside>
+
+  <main class="content">
+    <!-- 验证码页 -->
+    <section id="page-codes" class="page active">
+      <header class="page-head">
+        <div>
+          <h2>验证码</h2>
+          <p class="page-desc">点任意卡片复制验证码</p>
+        </div>
+        <div class="head-actions">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg>
+            <input type="text" id="codes-search" placeholder="搜索账号…">
+          </div>
+          <button class="btn btn-primary" id="btn-add-account">＋ 添加账号</button>
+        </div>
+      </header>
+      <div id="codes-grid" class="codes-grid"></div>
+      <div id="codes-empty" class="empty-state hidden">
+        <p class="empty-title">还没有账号</p>
+        <p class="empty-desc">点「添加账号」，手动填密钥或粘贴 otpauth:// 链接</p>
+      </div>
+    </section>
+
+    <!-- 日记页 -->
+    <section id="page-diary" class="page">
+      <header class="page-head">
+        <div>
+          <h2>日记</h2>
+          <p class="page-desc">只存在本地加密库里</p>
+        </div>
+        <div class="head-actions">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg>
+            <input type="text" id="diary-search" placeholder="搜索日记…">
+          </div>
+          <button class="btn btn-primary" id="btn-new-diary">＋ 写日记</button>
+        </div>
+      </header>
+      <div class="diary-layout">
+        <div id="diary-list" class="diary-list"></div>
+        <div class="diary-editor card">
+          <div class="editor-row">
+            <input type="date" id="diary-date">
+            <div class="mood-picker" id="mood-picker">
+              <button type="button" data-mood="">无心情</button>
+              <button type="button" data-mood="开心">开心</button>
+              <button type="button" data-mood="平静">平静</button>
+              <button type="button" data-mood="专注">专注</button>
+              <button type="button" data-mood="疲惫">疲惫</button>
+              <button type="button" data-mood="低落">低落</button>
+            </div>
+          </div>
+          <input type="text" id="diary-title" placeholder="标题（可空）" maxlength="80">
+          <textarea id="diary-body" placeholder="今天发生了什么…"></textarea>
+          <div class="editor-actions">
+            <button class="btn btn-danger-ghost hidden" id="btn-delete-diary">删除</button>
+            <span class="spacer"></span>
+            <span class="save-hint" id="diary-save-hint"></span>
+            <button class="btn btn-primary" id="btn-save-diary">保存</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 备份页 -->
+    <section id="page-backup" class="page">
+      <header class="page-head">
+        <div>
+          <h2>备份</h2>
+          <p class="page-desc">桌面版与浏览器插件共用同一种加密备份文件，可互导</p>
+        </div>
+      </header>
+      <div class="stack">
+        <div class="card">
+          <h3>导出加密备份</h3>
+          <p class="card-desc">把全部账号与日记导出为一个加密 JSON 文件。导出需再次输入主密码确认，文件用同一主密码加密。</p>
+          <div class="inline-form">
+            <input type="password" id="export-password" placeholder="输入主密码确认">
+            <button class="btn btn-primary" id="btn-export">导出备份</button>
+          </div>
+          <p class="form-error" id="export-msg"></p>
+        </div>
+        <div class="card">
+          <h3>导入加密备份</h3>
+          <p class="card-desc">选择备份文件并输入该文件的密码。导入会<strong>整体替换</strong>当前库里的账号与日记，请先确认。</p>
+          <div class="inline-form">
+            <input type="password" id="import-password" placeholder="备份文件的密码">
+            <button class="btn" id="btn-import">选择文件并导入</button>
+          </div>
+          <p class="form-error" id="import-msg"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 设置页 -->
+    <section id="page-settings" class="page">
+      <header class="page-head">
+        <div>
+          <h2>设置</h2>
+          <p class="page-desc">主密码与自动锁定</p>
+        </div>
+      </header>
+      <div class="stack">
+        <div class="card">
+          <h3>修改主密码</h3>
+          <div class="form-grid">
+            <label>当前密码<input type="password" id="pw-old"></label>
+            <label>新密码<input type="password" id="pw-new"></label>
+            <label>确认新密码<input type="password" id="pw-new2"></label>
+          </div>
+          <p class="form-error" id="pw-msg"></p>
+          <button class="btn btn-primary" id="btn-change-pw">保存新密码</button>
+        </div>
+        <div class="card">
+          <h3>自动锁定</h3>
+          <p class="card-desc">无操作超过设定时间后自动锁定，需要重新输主密码。</p>
+          <select id="autolock-select">
+            <option value="1">1 分钟</option>
+            <option value="5">5 分钟</option>
+            <option value="15">15 分钟</option>
+            <option value="30">30 分钟</option>
+            <option value="0">从不</option>
+          </select>
+        </div>
+        <div class="card about-card">
+          <h3>关于</h3>
+          <p class="card-desc">Yousj OTP v2.0.0 · 数据只存本机 userData 目录，全程 AES-256-GCM 加密，密钥由主密码经 PBKDF2（210000 次）派生。不联网、不上传。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 账号编辑弹窗 -->
+<div id="account-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3 id="account-modal-title">添加账号</h3>
+    <label class="field">粘贴 otpauth:// 链接（自动解析填表）
+      <input type="text" id="f-otpauth" placeholder="otpauth://totp/…">
+    </label>
+    <div class="form-grid">
+      <label class="field">名称（账号）<input type="text" id="f-name" placeholder="alice@example.com"></label>
+      <label class="field">发行方<input type="text" id="f-issuer" placeholder="GitHub"></label>
+      <label class="field span2">密钥（Base32）<input type="text" id="f-secret" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off"></label>
+      <label class="field">类型
+        <select id="f-type">
+          <option value="totp">TOTP（时间）</option>
+          <option value="hotp">HOTP（计数器）</option>
+        </select>
+      </label>
+      <label class="field">算法
+        <select id="f-algorithm">
+          <option value="SHA1">SHA1</option>
+          <option value="SHA256">SHA256</option>
+          <option value="SHA512">SHA512</option>
+        </select>
+      </label>
+      <label class="field">位数
+        <select id="f-digits">
+          <option value="6">6 位</option>
+          <option value="8">8 位</option>
+        </select>
+      </label>
+      <label class="field" id="f-period-wrap">周期（秒）<input type="number" id="f-period" value="30" min="5" max="3600"></label>
+      <label class="field hidden" id="f-counter-wrap">计数器<input type="number" id="f-counter" value="0" min="0"></label>
+    </div>
+    <p class="form-error" id="account-error"></p>
+    <div class="modal-actions">
+      <button class="btn" id="btn-account-cancel">取消</button>
+      <button class="btn btn-primary" id="btn-account-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
