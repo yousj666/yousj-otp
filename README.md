@@ -13,7 +13,7 @@ v2 起共三端：**桌面版**（Windows / macOS）、**浏览器插件**（Chr
 - **验证码**：TOTP / HOTP，SHA1 / SHA256 / SHA512，6 / 8 位，周期可调（默认 30 秒）
   - 大字等宽码 + 30 秒倒计时环，最后 5 秒变红提醒
   - 添加时可粘贴 `otpauth://` 链接自动解析填表
-  - **扫码添加**（v2.1 恢复 v1 的功能）：导入二维码图片文件、或把图片直接粘贴进来，本地用 jsQR 解码出 `otpauth://` 后自动填表；桌面版还可开摄像头扫码
+  - **扫码添加**（v2.1 恢复 v1 的功能）：导入二维码图片文件、或把图片直接粘贴进来，本地用 jsQR 解码出 `otpauth://` 后自动填表（扫码就是上传/粘贴图片，不调用摄像头）
   - **出示二维码**：每个账号都能把自己的 `otpauth://` 生成二维码显示（本地 qrcode-generator 生成），方便迁移到手机等其他设备
   - 桌面版点卡片复制；插件版点一下复制并**自动填入当前网页的验证码输入框**（识别 `autocomplete="one-time-code"`、关键词输入框、分散的单字框）
 - **日记**：按日期写日记（标题 + 正文 + 心情标签），可搜索、编辑、删除，只存在本地加密库里
@@ -31,14 +31,14 @@ v2 起共三端：**桌面版**（Windows / macOS）、**浏览器插件**（Chr
 
 到 [Releases](https://github.com/yousj666/yousj-otp/releases) 下载：
 
-- **Windows**：`Yousj OTP Setup 2.1.0.exe`（安装版）或 `Yousj OTP 2.1.0.exe`（portable 免安装版）。未做代码签名，首次运行 SmartScreen 可能提示，点「更多信息 → 仍要运行」。
-- **macOS**：`Yousj OTP-2.1.0.dmg`（或 zip），区分 Intel（x64）与 Apple Silicon（arm64）。未签名，首次打开请**右键点应用 →「打开」**；若仍被拦，到「系统设置 → 隐私与安全性」里允许，或执行 `xattr -dr com.apple.quarantine /Applications/Yousj\ OTP.app`。
+- **Windows**：`Yousj OTP Setup 2.1.1.exe`（安装版）或 `Yousj OTP 2.1.1.exe`（portable 免安装版）。未做代码签名，首次运行 SmartScreen 可能提示，点「更多信息 → 仍要运行」。
+- **macOS**：`Yousj OTP-2.1.1.dmg`（或 zip），区分 Intel（x64）与 Apple Silicon（arm64）。未签名，首次打开请**右键点应用 →「打开」**；若仍被拦，到「系统设置 → 隐私与安全性」里允许，或执行 `xattr -dr com.apple.quarantine /Applications/Yousj\ OTP.app`。
 
 数据文件位置（Electron userData）：Windows `%APPDATA%/yousj-otp-desktop/`、macOS `~/Library/Application Support/yousj-otp-desktop/`，库文件名为 `vault.json`。
 
 ## 浏览器插件
 
-到 [Releases](https://github.com/yousj666/yousj-otp/releases) 下载 `yousj-otp-extension-v2.1.0.zip`，解压后：
+到 [Releases](https://github.com/yousj666/yousj-otp/releases) 下载 `yousj-otp-extension-v2.1.1.zip`，解压后：
 
 1. 打开 `chrome://extensions`（Edge 为 `edge://extensions`），开启开发者模式
 2. 「加载已解压的扩展程序」，选择解压出的目录

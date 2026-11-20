@@ -266,11 +266,11 @@ if (!gotLock) {
     if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
   });
   app.whenReady().then(() => {
-    // 只放行摄像头（扫码添加用），其余权限一律拒绝
+    // 权限一律拒绝（扫码添加走图片导入/粘贴，不用摄像头等任何设备权限）
     session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
-      callback(permission === 'media');
+      callback(false);
     });
-    session.defaultSession.setPermissionCheckHandler((wc, permission) => permission === 'media');
+    session.defaultSession.setPermissionCheckHandler((wc, permission) => false);
     store = new VaultStore(vaultPath());
     registerIpc();
     createWindow();

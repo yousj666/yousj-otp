@@ -284,10 +284,6 @@ input:focus, select:focus, textarea:focus {
 /* ---------- 二维码 ---------- */
 .qr-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .qr-actions .qr-hint { font-size: 12px; color: var(--text-faint); }
-.qr-video {
-  width: 100%; max-height: 300px; object-fit: cover;
-  background: #000; border: 1px solid var(--border-strong); border-radius: var(--radius);
-}
 .qr-box {
   background: #fff; border-radius: var(--radius); padding: 14px;
   display: inline-block; line-height: 0; align-self: center;

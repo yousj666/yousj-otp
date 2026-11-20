@@ -306,7 +306,7 @@ async function openAccountModal(acct) {
   $('#f-name').focus();
 }
 
-function closeAccountModal() { stopCamera(); $('#account-modal').classList.add('hidden'); }
+function closeAccountModal() { $('#account-modal').classList.add('hidden'); }
 $('#btn-add-account').addEventListener('click', () => openAccountModal(null));
 $('#btn-account-cancel').addEventListener('click', closeAccountModal);
 $('#account-modal').addEventListener('click', (e) => {
@@ -372,44 +372,6 @@ document.addEventListener('paste', (e) => {
   if (!item) return;
   e.preventDefault();
   scanImageFile(item.getAsFile());
-});
-
-/* 摄像头扫码（无摄像头/被拒绝时给出提示，走图片导入） */
-let camStream = null, camTimer = null;
-function stopCamera() {
-  if (camTimer) { clearInterval(camTimer); camTimer = null; }
-  if (camStream) { camStream.getTracks().forEach((t) => t.stop()); camStream = null; }
-  $('#qr-video').classList.add('hidden');
-  $('#btn-qr-camera').textContent = '摄像头扫码';
-}
-$('#btn-qr-camera').addEventListener('click', async () => {
-  if (camStream) { stopCamera(); return; }
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    toast('当前环境不支持摄像头，请用图片导入');
-    return;
-  }
-  try {
-    camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-  } catch (err) {
-    toast('打不开摄像头，请用图片导入');
-    return;
-  }
-  const video = $('#qr-video');
-  video.srcObject = camStream;
-  video.classList.remove('hidden');
-  $('#btn-qr-camera').textContent = '关闭摄像头';
-  const cv = document.createElement('canvas');
-  camTimer = setInterval(() => {
-    if (!video.videoWidth) return;
-    cv.width = video.videoWidth;
-    cv.height = video.videoHeight;
-    cv.getContext('2d').drawImage(video, 0, 0);
-    const text = QrTools.decodeCanvas(cv);
-    if (text) {
-      stopCamera();
-      applyScannedText(text);
-    }
-  }, 250);
 });
 
 /* 出示二维码：用本机密钥在渲染层本地生成，不出窗口 */
