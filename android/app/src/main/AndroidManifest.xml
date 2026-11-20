@@ -2,8 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="cc.yousj.otp">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application android:label="Yousj OTP" android:icon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity android:name="cc.yousj.otp.ui.MainActivity"
@@ -13,8 +11,5 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name="cc.yousj.otp.ui.ScanActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"/>
     </application>
 </manifest>

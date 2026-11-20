@@ -1,13 +1,11 @@
 package cc.yousj.otp.ui
 
-import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -339,7 +337,7 @@ class MainActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
             layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
         })
-        header.addView(ghostButton("扫码") { startScan() })
+        header.addView(ghostButton("扫码") { pickQrImageFromHeader() })
         header.addView(Space(this).apply { minimumWidth = dp(8) })
         header.addView(accentButton("＋ 添加") { showAccountDialog(null, null) })
         page.addView(header)
@@ -380,7 +378,7 @@ class MainActivity : Activity() {
         }
         if (shown.isEmpty()) {
             list.addView(label(
-                if (data.accounts.isEmpty()) "还没有账号\n点右上角「＋ 添加」，或用「扫码」添加"
+                if (data.accounts.isEmpty()) "还没有账号\n点右上角「＋ 添加」，或点「扫码」上传二维码图片"
                 else "没有匹配的账号", 14f).apply {
                 gravity = Gravity.CENTER; setPadding(0, dp(60), 0, 0)
             })
@@ -479,6 +477,8 @@ class MainActivity : Activity() {
     private var dlgIssuer: EditText? = null
     private var dlgPeriod: EditText? = null
     private var dlgCounter: EditText? = null
+    // true=二维码选图是从账号弹窗里发起的（结果填回弹窗）；false=从验证码页「扫码」发起（结果直接开添加弹窗）
+    private var qrPickForDialog = false
 
     private fun cycleButton(labelPrefix: String, values: List<String>, initial: String): Pair<Button, () -> String> {
         var idx = values.indexOf(initial).coerceAtLeast(0)
@@ -525,6 +525,7 @@ class MainActivity : Activity() {
             addView(ghostButton("上传二维码图") {
                 dlgName = nameIn; dlgIssuer = issuerIn; dlgSecret = secretIn
                 dlgPeriod = periodIn; dlgCounter = counterIn
+                qrPickForDialog = true
                 startActivityForResult(
                     Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }, REQ_QR_IMAGE)
             })
@@ -590,22 +591,13 @@ class MainActivity : Activity() {
         d.show()
     }
 
-    /* ---------- 扫码 ---------- */
-    private fun startScan() {
-        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), REQ_PERM_CAMERA)
-            return
-        }
-        startActivityForResult(Intent(this, ScanActivity::class.java), REQ_SCAN)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
-                                            grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQ_PERM_CAMERA) {
-            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startScan()
-            else toast("没有相机权限，用不了扫码")
-        }
+    /* ---------- 扫码添加（只走上传二维码图片，不用摄像头） ---------- */
+    private fun pickQrImageFromHeader() {
+        qrPickForDialog = false
+        dlgName = null; dlgIssuer = null; dlgSecret = null
+        dlgPeriod = null; dlgCounter = null
+        startActivityForResult(
+            Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }, REQ_QR_IMAGE)
     }
 
     /* ---------- 账号二维码 ---------- */
@@ -921,23 +913,19 @@ class MainActivity : Activity() {
         inner.addView(ghostButton("立即锁定") { doLock() }.apply {
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(24) }
         })
-        inner.addView(label("Yousj OTP 安卓版 2.0.0\n包名 cc.yousj.otp\n数据只保存在本机加密库中，不联网。", 12f))
+        inner.addView(label("Yousj OTP 安卓版 2.1.0\n包名 cc.yousj.otp\n数据只保存在本机加密库中，不联网。", 12f))
         return page
     }
 
-    /* ---------- 文件 / 扫码回调 ---------- */
+    /* ---------- 文件 / 二维码图片回调 ---------- */
     override fun onActivityResult(req: Int, res: Int, data: Intent?) {
         super.onActivityResult(req, res, data)
         if (res != RESULT_OK) return
         when (req) {
-            REQ_SCAN -> {
-                val text = data?.getStringExtra(ScanActivity.EXTRA_QR_TEXT) ?: return
-                val p = Otp.parseOtpAuth(text)
-                if (p == null) toast("扫到的不是有效的 OTP 二维码", true)
-                else showAccountDialog(null, p)
-            }
             REQ_QR_IMAGE -> {
                 val uri = data?.data ?: return
+                val forDialog = qrPickForDialog
+                qrPickForDialog = false
                 try {
                     val stream = contentResolver.openInputStream(uri)!!
                     val bmp = BitmapFactory.decodeStream(stream)
@@ -949,10 +937,14 @@ class MainActivity : Activity() {
                         BinaryBitmap(HybridBinarizer(RGBLuminanceSource(w, h, pixels))))
                     val p = Otp.parseOtpAuth(result.text)
                     if (p == null) { toast("不是有效的 OTP 二维码", true); return }
-                    dlgName?.setText(p.name); dlgIssuer?.setText(p.issuer)
-                    dlgSecret?.setText(p.secret); dlgPeriod?.setText(p.period.toString())
-                    dlgCounter?.setText(p.counter.toString())
-                    toast("已填入，检查后点保存")
+                    if (forDialog && dlgName != null) {
+                        dlgName?.setText(p.name); dlgIssuer?.setText(p.issuer)
+                        dlgSecret?.setText(p.secret); dlgPeriod?.setText(p.period.toString())
+                        dlgCounter?.setText(p.counter.toString())
+                        toast("已填入，检查后点保存")
+                    } else {
+                        showAccountDialog(null, p)
+                    }
                 } catch (e: Exception) {
                     toast("识别失败：${e.message}", true)
                 }
@@ -1009,9 +1001,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQ_QR_IMAGE = 1001
-        private const val REQ_SCAN = 1002
         private const val REQ_EXPORT = 1003
         private const val REQ_IMPORT = 1004
-        private const val REQ_PERM_CAMERA = 2001
     }
 }
