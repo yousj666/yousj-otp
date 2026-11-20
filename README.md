@@ -2,7 +2,7 @@
 
 自用的 OTP 二次验证 + 加密日记工具。**数据只存本地，全程加密，不联网、不上传。**
 
-v2 起共三端：**桌面版**（Windows / macOS）、**浏览器插件**（Chrome / Edge）、安卓 App（v1 沿用）。桌面版与插件版共用同一套加密备份格式，可互相导入导出。
+v2 起共三端：**桌面版**（Windows / macOS）、**浏览器插件**（Chrome / Edge）、**安卓 App**。三端共用同一套加密备份格式（PBKDF2-HMAC-SHA256 210000 次 + AES-256-GCM），可互相导入导出。
 
 **界面风格**：v2.1 起回到 v1 的视觉语言——近黑灰底（#1a1a1a / #222 / 卡片 #262626）+ 琥珀橙强调（#f5a623），圆角卡片（10px）与控件（6px），验证码用 Consolas 等宽大字。桌面版与插件版共用这套设计变量。
 
@@ -50,7 +50,7 @@ popup 分「验证码 / 日记」两个标签页：验证码点一下即复制 +
 
 ## 安卓 App
 
-v1 沿用，见 `android/`：包名 `cc.yousj.otp`，Kotlin 手工工具链构建（aapt2 + kotlinc + d8），`cd android && ./build-apk.sh`。产物为 debug 签名，仅适合自用。
+见 `android/`：包名 `cc.yousj.otp`（与 v1 相同，可直接覆盖升级，旧版账号会在首次解锁时自动迁移）。功能与其它两端对齐：主密码加密库、验证码/日记/备份/设置四页（底部导航）、相机扫码添加（ZXing 离线解码）、账号二维码出示、加密备份导入导出（三端互通，已用 JVM 自测双向验证，见 `android/test/`）。界面沿用 v1 自有风格：深灰底 + 橙色点缀 + 圆角卡片。Kotlin 手工工具链构建（aapt2 + kotlinc + d8），`cd android && ./build-apk.sh`。产物为 debug 签名（与 v1 同一证书），仅适合自用。
 
 ## 开发
 
@@ -68,7 +68,7 @@ cd desktop && npm install && npm start   # 本地运行桌面版
 - `desktop/` — Electron 桌面版（纯 HTML/CSS/JS 无框架，electron-builder 打包）
 - `extension/` — MV3 浏览器插件（popup + 管理页 + 自动填入内容脚本）
 - 二维码库均为本地打包、不走 CDN：解码 jsQR 1.4.0（`jsqr.min.js`，与 v1 同一份）、生成 qrcode-generator 2.0.4（`qrcode.js`），两端各一份副本，`qr-tools.js` 是薄封装
-- `android/` — 安卓 App（v1）
+- `android/` — 安卓 App（v2，Kotlin 原生）
 - `.github/workflows/release.yml` — 推 `v*` 标签自动三端打包发 Release
 
 发布：打 `vX.Y.Z` 标签推送即触发 Actions，Windows（NSIS + portable）、macOS（dmg + zip，未签名）、插件 zip 汇入同一个 Release。
